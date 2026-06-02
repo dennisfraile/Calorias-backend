@@ -1,0 +1,28 @@
+## .NET / C#
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+.vs/
+*.user
+*.suo
+[Tt]est[Rr]esults/
+artifacts/
+
+## Configuración por entorno / secretos
+appsettings.Development.json
+appsettings.Local.json
+*.pfx
+.env
+.env.*
+!.env.example
+
+## Credenciales Google Cloud (Vision + OAuth) — NUNCA al repo
+google-credentials.json
+gcp-*.json
+
+## Editor / OS
+.idea/
+.DS_Store
+Thumbs.db
+*.log
