@@ -42,6 +42,16 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+// --- CORS (necesario para el cliente Expo web en el navegador) ---
+// El front web corre en localhost:8081 y llama a este backend en otro puerto:
+// es cross-origin. Se envía Authorization (no cookies), así que basta con
+// permitir el origen + cualquier header/método. (En nativo CORS no aplica.)
+const string CorsDevWeb = "dev-web";
+builder.Services.AddCors(o => o.AddPolicy(CorsDevWeb, p => p
+    .WithOrigins("http://localhost:8081", "http://localhost:19006")
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
+
 // --- MVC / OpenAPI ---
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -54,6 +64,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors(CorsDevWeb);
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
