@@ -10,6 +10,20 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddScoped<OrquestadorAnalisisComida>();
 
 // --- Autenticación con Google (flujo ID Token) ---
+// El 'aud' del token es el Client ID de la plataforma que lo emitió (web/iOS/Android),
+// así que aceptamos varias audiencias. Compatibilidad:
+//   - Google:ClientId            -> una sola audiencia (modo simple)
+//   - Google:ValidAudiences:0..n -> lista (uno por plataforma)
+var audienciasGoogle = builder.Configuration
+    .GetSection("Google:ValidAudiences").Get<string[]>() ?? [];
+var clientIdSimple = builder.Configuration["Google:ClientId"];
+var audiencias = audienciasGoogle
+    .Append(clientIdSimple)
+    .Where(a => !string.IsNullOrWhiteSpace(a))
+    .Select(a => a!)
+    .Distinct()
+    .ToArray();
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -19,8 +33,7 @@ builder.Services
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidIssuer = "https://accounts.google.com",
-            // El 'aud' del token debe ser tu Google OAuth Client ID (cliente móvil).
-            ValidAudience = builder.Configuration["Google:ClientId"],
+            ValidAudiences = audiencias,
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
