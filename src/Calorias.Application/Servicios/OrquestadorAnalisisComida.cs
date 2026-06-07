@@ -18,11 +18,12 @@ public class OrquestadorAnalisisComida(
         if (etiquetas.Count == 0)
             throw new InvalidOperationException("No se detectaron alimentos en la imagen.");
 
-        // 2) Construimos una consulta en lenguaje natural para Nutritionix
-        var consulta = string.Join(" and ", etiquetas.Take(5).Select(e => e.Descripcion));
-        logger.LogInformation("Consultando Nutritionix con: {Consulta}", consulta);
+        // 2) Tomamos los alimentos detectados (máx. 5) para consultar la nutrición
+        var alimentos = etiquetas.Take(5).Select(e => e.Descripcion).ToList();
+        logger.LogInformation("Consultando USDA FoodData Central con: {Alimentos}",
+            string.Join(", ", alimentos));
 
-        var nutricional = await nutricion.ObtenerMacrosAsync(consulta, ct);
+        var nutricional = await nutricion.ObtenerMacrosAsync(alimentos, ct);
 
         // 3) Componemos la entidad de dominio + payloads crudos (jsonb) para auditoría
         var registro = new RegistroComida

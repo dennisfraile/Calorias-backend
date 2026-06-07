@@ -34,7 +34,19 @@ public class ComidasController(
         db.Registros.Add(registro);
         await db.SaveChangesAsync(ct);
 
-        return Ok(registro);
+        // Aplanamos a DTO: devolver la entidad EF cicla (Detalles → RegistroComida → …).
+        var dto = new AnalisisComidaDto(
+            registro.Id,
+            registro.FechaRegistro.ToString("o"),
+            registro.CaloriasTotales,
+            registro.ProteinasTotales,
+            registro.CarbohidratosTotales,
+            registro.GrasasTotales,
+            registro.Detalles.Select(d => new DetalleComidaDto(
+                d.NombreAlimento, d.Calorias, d.Proteinas,
+                d.Carbohidratos, d.Grasas, d.Cantidad, d.UnidadMedida)).ToList());
+
+        return Ok(dto);
     }
 
     /// <summary>

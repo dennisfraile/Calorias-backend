@@ -3,7 +3,7 @@ namespace Calorias.Application.Abstractions;
 public interface IServicioNutricion
 {
     Task<ResultadoNutricional> ObtenerMacrosAsync(
-        string consultaLenguajeNatural, CancellationToken ct = default);
+        IReadOnlyList<string> alimentos, CancellationToken ct = default);
 }
 
 public record ResultadoNutricional(

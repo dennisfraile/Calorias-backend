@@ -21,12 +21,12 @@ public static class DependencyInjection
         services.AddSingleton(_ => ImageAnnotatorClient.Create());
         services.AddScoped<IServicioVision, ServicioVisionGoogle>();
 
-        // Nutritionix: HttpClient tipado con headers de auth
-        services.AddHttpClient<IServicioNutricion, ServicioNutritionix>(c =>
+        // USDA FoodData Central: HttpClient tipado; la API key va en el header X-Api-Key.
+        // (api.data.gov acepta "DEMO_KEY" con límites bajos si no hay clave configurada.)
+        services.AddHttpClient<IServicioNutricion, ServicioNutricionUsda>(c =>
         {
-            c.BaseAddress = new Uri("https://trackapi.nutritionix.com/");
-            c.DefaultRequestHeaders.Add("x-app-id",  config["Nutritionix:AppId"]);
-            c.DefaultRequestHeaders.Add("x-app-key", config["Nutritionix:AppKey"]);
+            c.BaseAddress = new Uri("https://api.nal.usda.gov/fdc/");
+            c.DefaultRequestHeaders.Add("X-Api-Key", config["Usda:ApiKey"] ?? "DEMO_KEY");
         });
 
         services.AddScoped<IServicioUsuarios, ServicioUsuarios>();
