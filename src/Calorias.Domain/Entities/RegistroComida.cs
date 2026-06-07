@@ -8,6 +8,13 @@ public class RegistroComida
     public Usuario Usuario { get; set; } = default!;
 
     public DateTime FechaRegistro { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Día local del usuario (lo envía el cliente). Clave de agrupación diaria.</summary>
+    public DateOnly FechaLocal { get; set; }
+
+    /// <summary>Tipo de comida (desayuno/almuerzo/cena/snack).</summary>
+    public TipoComida Tipo { get; set; }
+
     public string? UrlImagen { get; set; }
 
     // Totales agregados (desnormalizados para lectura rápida en el dashboard)
