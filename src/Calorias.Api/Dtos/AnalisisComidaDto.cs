@@ -7,6 +7,8 @@ namespace Calorias.Api.Dtos;
 /// </summary>
 public record AnalisisComidaDto(
     Guid Id,
+    string Tipo,
+    string FechaLocal,
     string Fecha,
     decimal CaloriasTotales,
     decimal ProteinasTotales,

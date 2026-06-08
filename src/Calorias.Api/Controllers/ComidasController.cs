@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Calorias.Api.Dtos;
 using Calorias.Application.Abstractions;
 using Calorias.Application.Servicios;
+using Calorias.Domain.Entities;
 using Calorias.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -15,14 +16,23 @@ namespace Calorias.Api.Controllers;
 public class ComidasController(
     OrquestadorAnalisisComida orquestador,
     IServicioUsuarios usuarios,
+    IServicioResumenDiario resumen,
     CaloriasDbContext db) : ControllerBase
 {
     [HttpPost("analizar")]
     [RequestSizeLimit(10_000_000)] // 10 MB
-    public async Task<IActionResult> Analizar(IFormFile foto, CancellationToken ct)
+    public async Task<IActionResult> Analizar(
+        [FromForm] IFormFile foto,
+        [FromForm] TipoComida? tipo,
+        [FromForm] DateOnly? fechaLocal,
+        CancellationToken ct)
     {
         if (foto is null || foto.Length == 0)
             return BadRequest("Imagen requerida.");
+        if (tipo is null || !Enum.IsDefined(tipo.Value))
+            return BadRequest("Tipo de comida no válido.");
+        if (fechaLocal is null)
+            return BadRequest("fechaLocal es requerido.");
 
         // Upsert idempotente del usuario desde los claims del token de Google.
         // Garantiza la integridad referencial (FK) antes de guardar la comida.
@@ -30,13 +40,21 @@ public class ComidasController(
 
         await using var stream = foto.OpenReadStream();
         var registro = await orquestador.AnalizarAsync(stream, usuario.Id, ct);
+        registro.Tipo = tipo.Value;
+        registro.FechaLocal = fechaLocal.Value;
 
+        // Guardado de la comida + recálculo del rollup en la misma transacción.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
         db.Registros.Add(registro);
         await db.SaveChangesAsync(ct);
+        await resumen.RecalcularDiaAsync(usuario.Id, fechaLocal.Value, ct);
+        await tx.CommitAsync(ct);
 
         // Aplanamos a DTO: devolver la entidad EF cicla (Detalles → RegistroComida → …).
         var dto = new AnalisisComidaDto(
             registro.Id,
+            registro.Tipo.ToString(),
+            registro.FechaLocal.ToString("yyyy-MM-dd"),
             registro.FechaRegistro.ToString("o"),
             registro.CaloriasTotales,
             registro.ProteinasTotales,

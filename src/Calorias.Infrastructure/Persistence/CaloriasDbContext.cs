@@ -8,6 +8,7 @@ public class CaloriasDbContext(DbContextOptions<CaloriasDbContext> options) : Db
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<RegistroComida> Registros => Set<RegistroComida>();
     public DbSet<DetalleComida> Detalles => Set<DetalleComida>();
+    public DbSet<ResumenDiario> ResumenesDiarios => Set<ResumenDiario>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -31,6 +32,11 @@ public class CaloriasDbContext(DbContextOptions<CaloriasDbContext> options) : Db
             e.Property(x => x.PayloadVisionJson).HasColumnType("jsonb");
             e.Property(x => x.PayloadNutritionixJson).HasColumnType("jsonb");
 
+            // Enum como texto legible en la BD.
+            e.Property(x => x.Tipo).HasConversion<string>().HasMaxLength(20);
+            // Acelera el recompute-the-day y las consultas por día.
+            e.HasIndex(x => new { x.UsuarioId, x.FechaLocal });
+
             e.HasOne(x => x.Usuario)
              .WithMany(u => u.Registros)
              .HasForeignKey(x => x.UsuarioId)
@@ -50,6 +56,17 @@ public class CaloriasDbContext(DbContextOptions<CaloriasDbContext> options) : Db
             e.Property(x => x.Proteinas).HasPrecision(10, 2);
             e.Property(x => x.Carbohidratos).HasPrecision(10, 2);
             e.Property(x => x.Grasas).HasPrecision(10, 2);
+        });
+
+        b.Entity<ResumenDiario>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.HasIndex(x => new { x.UsuarioId, x.FechaLocal }).IsUnique();
+            e.Property(x => x.UsuarioId).HasMaxLength(255);
+            e.Property(x => x.CaloriasTotal).HasPrecision(10, 2);
+            e.Property(x => x.ProteinasTotal).HasPrecision(10, 2);
+            e.Property(x => x.CarbosTotal).HasPrecision(10, 2);
+            e.Property(x => x.GrasasTotal).HasPrecision(10, 2);
         });
     }
 }
