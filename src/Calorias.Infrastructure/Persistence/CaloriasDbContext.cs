@@ -18,6 +18,18 @@ public class CaloriasDbContext(DbContextOptions<CaloriasDbContext> options) : Db
             e.Property(x => x.Id).HasMaxLength(255);            // 'sub' de Google
             e.Property(x => x.Email).IsRequired().HasMaxLength(320);
             e.HasIndex(x => x.Email);
+
+            // --- Perfil físico ---
+            // Enums nullables como texto legible en la BD.
+            e.Property(x => x.Sexo).HasConversion<string>().HasMaxLength(12);
+            e.Property(x => x.NivelActividad).HasConversion<string>().HasMaxLength(12);
+            e.Property(x => x.Objetivo).HasConversion<string>().HasMaxLength(10);
+            e.Property(x => x.PesoKg).HasPrecision(5, 2);
+            e.Property(x => x.RitmoKgSemana).HasPrecision(4, 2);
+            // Split de macros: NOT NULL con default (las filas existentes quedan en 30/40/30).
+            e.Property(x => x.MetaProteinaPct).HasDefaultValue(30);
+            e.Property(x => x.MetaCarbosPct).HasDefaultValue(40);
+            e.Property(x => x.MetaGrasasPct).HasDefaultValue(30);
         });
 
         b.Entity<RegistroComida>(e =>
