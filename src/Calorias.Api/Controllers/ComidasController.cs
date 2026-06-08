@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Calorias.Api.Dtos;
 using Calorias.Application.Abstractions;
+using Calorias.Application.Resultados;
 using Calorias.Application.Servicios;
 using Calorias.Domain.Entities;
 using Calorias.Infrastructure.Persistence;
@@ -17,6 +18,7 @@ public class ComidasController(
     OrquestadorAnalisisComida orquestador,
     IServicioUsuarios usuarios,
     IServicioResumenDiario resumen,
+    IServicioResumenPeriodos resumenPeriodos,
     CaloriasDbContext db) : ControllerBase
 {
     [HttpPost("analizar")]
@@ -110,6 +112,29 @@ public class ComidasController(
             .ToList();
 
         return Ok(historial);
+    }
+
+    /// <summary>
+    /// Resumen comparativo (actual vs período anterior) para el dashboard.
+    /// periodo ∈ {diario, semanal, mensual, trimestral, semestral, anual}.
+    /// ancla (YYYY-MM-DD) define el período; si falta, se usa la fecha UTC de hoy.
+    /// </summary>
+    [HttpGet("resumen")]
+    public async Task<ActionResult<ResumenPeriodos>> Resumen(
+        [FromQuery] string periodo,
+        [FromQuery] DateOnly? ancla,
+        CancellationToken ct)
+    {
+        var usuarioId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(usuarioId))
+            return Unauthorized();
+
+        if (!Enum.TryParse<Periodo>(periodo, ignoreCase: true, out var p) || !Enum.IsDefined(p))
+            return BadRequest("periodo no válido.");
+
+        var dia = ancla ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var res = await resumenPeriodos.ObtenerAsync(usuarioId, p, dia, ct);
+        return Ok(res);
     }
 
     private static string ComponerNombre(IReadOnlyList<string> nombres)
