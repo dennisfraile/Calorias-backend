@@ -23,12 +23,16 @@ public class ComidasController(
     [RequestSizeLimit(10_000_000)] // 10 MB
     public async Task<IActionResult> Analizar(
         [FromForm] IFormFile foto,
-        [FromForm] TipoComida tipo,
-        [FromForm] DateOnly fechaLocal,
+        [FromForm] TipoComida? tipo,
+        [FromForm] DateOnly? fechaLocal,
         CancellationToken ct)
     {
         if (foto is null || foto.Length == 0)
             return BadRequest("Imagen requerida.");
+        if (tipo is null || !Enum.IsDefined(tipo.Value))
+            return BadRequest("Tipo de comida no válido.");
+        if (fechaLocal is null)
+            return BadRequest("fechaLocal es requerido.");
 
         // Upsert idempotente del usuario desde los claims del token de Google.
         // Garantiza la integridad referencial (FK) antes de guardar la comida.
@@ -36,14 +40,14 @@ public class ComidasController(
 
         await using var stream = foto.OpenReadStream();
         var registro = await orquestador.AnalizarAsync(stream, usuario.Id, ct);
-        registro.Tipo = tipo;
-        registro.FechaLocal = fechaLocal;
+        registro.Tipo = tipo.Value;
+        registro.FechaLocal = fechaLocal.Value;
 
         // Guardado de la comida + recálculo del rollup en la misma transacción.
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         db.Registros.Add(registro);
         await db.SaveChangesAsync(ct);
-        await resumen.RecalcularDiaAsync(usuario.Id, fechaLocal, ct);
+        await resumen.RecalcularDiaAsync(usuario.Id, fechaLocal.Value, ct);
         await tx.CommitAsync(ct);
 
         // Aplanamos a DTO: devolver la entidad EF cicla (Detalles → RegistroComida → …).
