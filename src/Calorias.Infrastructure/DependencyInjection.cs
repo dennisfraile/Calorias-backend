@@ -30,6 +30,7 @@ public static class DependencyInjection
         });
 
         services.AddScoped<IServicioUsuarios, ServicioUsuarios>();
+        services.AddScoped<IServicioResumenDiario, ServicioResumenDiario>();
 
         return services;
     }
