@@ -112,7 +112,12 @@ public class ServicioResumenPeriodos(CaloriasDbContext db) : IServicioResumenPer
                 ? DiasSemana[((int)d.DayOfWeek + 6) % 7]
                 : d.Day.ToString();
             lista.Add(porDia.TryGetValue(d, out var r)
-                ? new BucketResumen(etiqueta, (int)r.CaloriasTotal, (int)r.ProteinasTotal, (int)r.CarbosTotal, (int)r.GrasasTotal)
+                ? new BucketResumen(
+                    etiqueta,
+                    (int)Math.Round(r.CaloriasTotal, MidpointRounding.AwayFromZero),
+                    (int)Math.Round(r.ProteinasTotal, MidpointRounding.AwayFromZero),
+                    (int)Math.Round(r.CarbosTotal, MidpointRounding.AwayFromZero),
+                    (int)Math.Round(r.GrasasTotal, MidpointRounding.AwayFromZero))
                 : new BucketResumen(etiqueta, 0, 0, 0, 0));
         }
         return lista;
