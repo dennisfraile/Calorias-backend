@@ -62,6 +62,7 @@ public class CaloriasDbContext(DbContextOptions<CaloriasDbContext> options) : Db
         {
             e.HasKey(x => x.Id);
             e.HasIndex(x => new { x.UsuarioId, x.FechaLocal }).IsUnique();
+            e.Property(x => x.UsuarioId).HasMaxLength(255);
             e.Property(x => x.CaloriasTotal).HasPrecision(10, 2);
             e.Property(x => x.ProteinasTotal).HasPrecision(10, 2);
             e.Property(x => x.CarbosTotal).HasPrecision(10, 2);

@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Calorias.Api.Dtos;
 using Calorias.Application.Abstractions;
-using Calorias.Domain.Entities;
 using Calorias.Application.Servicios;
+using Calorias.Domain.Entities;
 using Calorias.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
