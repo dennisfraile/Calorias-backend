@@ -24,8 +24,11 @@ public class ServicioResumenDiario(CaloriasDbContext db) : IServicioResumenDiari
 
         if (registros.Count == 0)
         {
-            if (existente is not null) db.ResumenesDiarios.Remove(existente);
-            await db.SaveChangesAsync(ct);
+            if (existente is not null)
+            {
+                db.ResumenesDiarios.Remove(existente);
+                await db.SaveChangesAsync(ct);
+            }
             return;
         }
 

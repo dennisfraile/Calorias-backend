@@ -77,4 +77,22 @@ public class ServicioResumenDiarioTests
 
         Assert.False(await db.ResumenesDiarios.AnyAsync());
     }
+
+    [Fact]
+    public async Task Recalcular_solo_cuenta_los_registros_del_usuario_indicado()
+    {
+        using var db = NuevaDb();
+        var dia = new DateOnly(2026, 6, 7);
+        db.Registros.AddRange(
+            Comida("u1", dia, TipoComida.Desayuno, 300, 10, 40, 8),
+            Comida("u2", dia, TipoComida.Almuerzo, 999, 99, 99, 99));
+        await db.SaveChangesAsync();
+
+        await new ServicioResumenDiario(db).RecalcularDiaAsync("u1", dia);
+
+        var r = await db.ResumenesDiarios.SingleAsync();
+        Assert.Equal("u1", r.UsuarioId);
+        Assert.Equal(300m, r.CaloriasTotal);
+        Assert.Equal(1, r.NumComidas);
+    }
 }
