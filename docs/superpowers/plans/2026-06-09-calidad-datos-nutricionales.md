@@ -16,17 +16,21 @@
 
 ## Parte A — Filtro de etiquetas (1A)
 
-### Task A1: `FiltroEtiquetasComida` (puro, Domain)
+### Task A1: `FiltroEtiquetasComida` (puro, Application)
+
+> **Corrección (arquitectura):** el filtro va en **Application**, no en Domain. `EtiquetaDetectada`
+> vive en `Calorias.Application.Abstractions` y la dependencia es Application→Domain; un Domain que
+> referencie Application sería circular. Se ubica junto a `OrquestadorAnalisisComida` (su consumidor).
 
 **Files:**
-- Create: `backend/src/Calorias.Domain/Servicios/FiltroEtiquetasComida.cs`
+- Create: `backend/src/Calorias.Application/Servicios/FiltroEtiquetasComida.cs`
 - Test: `backend/tests/Calorias.Tests/FiltroEtiquetasComidaTests.cs`
 
 - [ ] **Step 1: Escribir el test que falla**
 
 ```csharp
 using Calorias.Application.Abstractions;
-using Calorias.Domain.Servicios;
+using Calorias.Application.Servicios;
 using Xunit;
 
 namespace Calorias.Tests;
@@ -78,7 +82,7 @@ Expected: FAIL de compilación ("FiltroEtiquetasComida no existe").
 ```csharp
 using Calorias.Application.Abstractions;
 
-namespace Calorias.Domain.Servicios;
+namespace Calorias.Application.Servicios;
 
 /// <summary>
 /// Quita de las etiquetas de Vision los términos genéricos/no-comida (denylist) y
@@ -165,11 +169,8 @@ Reemplazar el bloque actual (pasos 1 y 2 del método `AnalizarAsync`):
         var alimentos = etiquetas.Take(5).Select(e => e.Descripcion).ToList();
 ```
 
-Añadir el `using` al inicio del archivo si falta:
-
-```csharp
-using Calorias.Domain.Servicios;
-```
+`FiltroEtiquetasComida` vive en `Calorias.Application.Servicios`, el mismo namespace que
+`OrquestadorAnalisisComida`, así que **no hace falta añadir ningún `using`**.
 
 - [ ] **Step 2: Verificar compilación + tests existentes**
 
