@@ -8,6 +8,7 @@ namespace Calorias.Application.Servicios;
 public class OrquestadorAnalisisComida(
     IServicioVision vision,
     IServicioNutricion nutricion,
+    TraductorAlimentos traductor,
     ILogger<OrquestadorAnalisisComida> logger)
 {
     public async Task<RegistroComida> AnalizarAsync(
@@ -53,6 +54,10 @@ public class OrquestadorAnalisisComida(
         registro.ProteinasTotales     = registro.Detalles.Sum(d => d.Proteinas);
         registro.CarbohidratosTotales = registro.Detalles.Sum(d => d.Carbohidratos);
         registro.GrasasTotales        = registro.Detalles.Sum(d => d.Grasas);
+
+        // Traducción EN→ES como último paso (el match/confianza ya se hicieron en inglés).
+        foreach (var d in registro.Detalles)
+            d.NombreAlimento = await traductor.TraducirNombreAsync(d.NombreAlimento, ct);
 
         return registro;
     }
