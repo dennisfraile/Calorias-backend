@@ -8,13 +8,15 @@ namespace Calorias.Application.Servicios;
 public class OrquestadorAnalisisComida(
     IServicioVision vision,
     IServicioNutricion nutricion,
+    TraductorAlimentos traductor,
     ILogger<OrquestadorAnalisisComida> logger)
 {
     public async Task<RegistroComida> AnalizarAsync(
         Stream imagen, string usuarioId, CancellationToken ct = default)
     {
         // 1) Vision detecta etiquetas
-        var etiquetas = await vision.DetectarAlimentosAsync(imagen, ct);
+        var etiquetasCrudas = await vision.DetectarAlimentosAsync(imagen, ct);
+        var etiquetas = FiltroEtiquetasComida.Filtrar(etiquetasCrudas);
         if (etiquetas.Count == 0)
             throw new InvalidOperationException("No se detectaron alimentos en la imagen.");
 
@@ -52,6 +54,10 @@ public class OrquestadorAnalisisComida(
         registro.ProteinasTotales     = registro.Detalles.Sum(d => d.Proteinas);
         registro.CarbohidratosTotales = registro.Detalles.Sum(d => d.Carbohidratos);
         registro.GrasasTotales        = registro.Detalles.Sum(d => d.Grasas);
+
+        // Traducción EN→ES como último paso (el match/confianza ya se hicieron en inglés).
+        foreach (var d in registro.Detalles)
+            d.NombreAlimento = await traductor.TraducirNombreAsync(d.NombreAlimento, ct);
 
         return registro;
     }

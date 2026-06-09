@@ -1,6 +1,8 @@
 using Calorias.Application.Abstractions;
+using Calorias.Application.Servicios;
 using Calorias.Infrastructure.Persistence;
 using Calorias.Infrastructure.Servicios;
+using Google.Cloud.Translation.V2;
 using Google.Cloud.Vision.V1;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +23,11 @@ public static class DependencyInjection
         services.AddSingleton(_ => ImageAnnotatorClient.Create());
         services.AddScoped<IServicioVision, ServicioVisionGoogle>();
 
+        // Google Cloud Translation: misma credencial ADC que Vision (singleton, thread-safe).
+        services.AddSingleton(_ => TranslationClient.Create());
+        services.AddSingleton<IServicioTraduccion, ServicioTraduccionGoogle>();
+        services.AddSingleton<TraductorAlimentos>();
+
         // USDA FoodData Central: HttpClient tipado; la API key va en el header X-Api-Key.
         // (api.data.gov acepta "DEMO_KEY" con límites bajos si no hay clave configurada.)
         services.AddHttpClient<IServicioNutricion, ServicioNutricionUsda>(c =>
@@ -32,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IServicioUsuarios, ServicioUsuarios>();
         services.AddScoped<IServicioResumenDiario, ServicioResumenDiario>();
         services.AddScoped<IServicioResumenPeriodos, ServicioResumenPeriodos>();
+        services.AddScoped<IServicioCorreccionPorciones, ServicioCorreccionPorciones>();
 
         return services;
     }
