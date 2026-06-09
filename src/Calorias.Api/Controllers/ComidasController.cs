@@ -19,6 +19,7 @@ public class ComidasController(
     IServicioUsuarios usuarios,
     IServicioResumenDiario resumen,
     IServicioResumenPeriodos resumenPeriodos,
+    IServicioCorreccionPorciones correccion,
     CaloriasDbContext db) : ControllerBase
 {
     [HttpPost("analizar")]
@@ -53,19 +54,7 @@ public class ComidasController(
         await tx.CommitAsync(ct);
 
         // Aplanamos a DTO: devolver la entidad EF cicla (Detalles → RegistroComida → …).
-        var dto = new AnalisisComidaDto(
-            registro.Id,
-            registro.Tipo.ToString(),
-            registro.FechaLocal.ToString("yyyy-MM-dd"),
-            registro.FechaRegistro.ToString("o"),
-            registro.CaloriasTotales,
-            registro.ProteinasTotales,
-            registro.CarbohidratosTotales,
-            registro.GrasasTotales,
-            registro.Detalles.Select(d => new DetalleComidaDto(
-                d.NombreAlimento, d.Calorias, d.Proteinas,
-                d.Carbohidratos, d.Grasas, d.Cantidad, d.UnidadMedida)).ToList());
-
+        var dto = ADto(registro);
         return Ok(dto);
     }
 
@@ -136,6 +125,44 @@ public class ComidasController(
         var res = await resumenPeriodos.ObtenerAsync(usuarioId, p, dia, ct);
         return Ok(res);
     }
+
+    /// <summary>
+    /// Corrige las porciones (gramos) de los detalles de una comida propia y recalcula
+    /// totales + rollup. cantidadG = 0 elimina ese detalle. Devuelve la comida actualizada.
+    /// </summary>
+    [HttpPut("{id:guid}/porciones")]
+    public async Task<ActionResult<AnalisisComidaDto>> CorregirPorciones(
+        Guid id, [FromBody] CorreccionPorcionesDto cuerpo, CancellationToken ct)
+    {
+        var usuarioId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (string.IsNullOrEmpty(usuarioId)) return Unauthorized();
+        if (cuerpo?.Detalles is null || cuerpo.Detalles.Count == 0)
+            return BadRequest("Sin correcciones.");
+
+        var correcciones = cuerpo.Detalles
+            .Select(d => new CorreccionDetalle(d.DetalleId, d.CantidadG))
+            .ToList();
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var registro = await correccion.CorregirAsync(usuarioId, id, correcciones, ct);
+        if (registro is null) { await tx.RollbackAsync(ct); return NotFound(); }
+        await tx.CommitAsync(ct);
+
+        return Ok(ADto(registro));
+    }
+
+    private static AnalisisComidaDto ADto(RegistroComida r) => new(
+        r.Id,
+        r.Tipo.ToString(),
+        r.FechaLocal.ToString("yyyy-MM-dd"),
+        r.FechaRegistro.ToString("o"),
+        r.CaloriasTotales,
+        r.ProteinasTotales,
+        r.CarbohidratosTotales,
+        r.GrasasTotales,
+        r.Detalles.Select(d => new DetalleComidaDto(
+            d.Id, d.NombreAlimento, d.Calorias, d.Proteinas,
+            d.Carbohidratos, d.Grasas, d.Cantidad, d.UnidadMedida)).ToList());
 
     private static string ComponerNombre(IReadOnlyList<string> nombres)
     {

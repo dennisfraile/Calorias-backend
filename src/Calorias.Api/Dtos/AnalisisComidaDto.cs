@@ -17,6 +17,7 @@ public record AnalisisComidaDto(
     IReadOnlyList<DetalleComidaDto> Detalles);
 
 public record DetalleComidaDto(
+    Guid DetalleId,
     string Nombre,
     decimal Calorias,
     decimal Proteinas,
