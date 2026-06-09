@@ -14,7 +14,8 @@ public class OrquestadorAnalisisComida(
         Stream imagen, string usuarioId, CancellationToken ct = default)
     {
         // 1) Vision detecta etiquetas
-        var etiquetas = await vision.DetectarAlimentosAsync(imagen, ct);
+        var etiquetasCrudas = await vision.DetectarAlimentosAsync(imagen, ct);
+        var etiquetas = FiltroEtiquetasComida.Filtrar(etiquetasCrudas);
         if (etiquetas.Count == 0)
             throw new InvalidOperationException("No se detectaron alimentos en la imagen.");
 
