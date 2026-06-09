@@ -10,13 +10,14 @@ namespace Calorias.Infrastructure.Servicios;
 /// Lee una etiqueta nutricional con Gemini (Google AI Studio, free tier) vía REST:
 /// envía la imagen inline + un prompt que pide JSON estructurado (responseSchema) con los
 /// valores POR PORCIÓN ya en kcal. Best-effort: ante cualquier fallo devuelve null.
-/// API key en config 'Gemini:ApiKey'. Modelo: gemini-2.0-flash.
+/// API key en config 'Gemini:ApiKey'. Modelo: gemini-2.5-flash-lite (tiene cuota free tier;
+/// gemini-2.0-flash da free_tier limit 0 en algunas cuentas/regiones).
 /// </summary>
 public class ServicioEtiquetaGemini(
     HttpClient http, IConfiguration config, ILogger<ServicioEtiquetaGemini> logger)
     : IServicioEtiquetaNutricional
 {
-    private const string Modelo = "gemini-2.0-flash";
+    private const string Modelo = "gemini-2.5-flash-lite";
 
     private const string Prompt =
         "Eres un extractor de etiquetas nutricionales. Lee la tabla nutricional de la imagen y " +
