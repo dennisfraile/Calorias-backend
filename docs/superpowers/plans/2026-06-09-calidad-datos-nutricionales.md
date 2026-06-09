@@ -1061,6 +1061,12 @@ public class ServicioCorreccionPorciones(CaloriasDbContext db, IServicioResumenD
         reg.CarbohidratosTotales = reg.Detalles.Sum(x => x.Carbohidratos);
         reg.GrasasTotales        = reg.Detalles.Sum(x => x.Grasas);
 
+        // Un registro sin detalles ya no es una comida: lo eliminamos para que el
+        // rollup del día se recalcule (o se borre) correctamente. (Sin esto, un registro
+        // vacío sigue contando como comida del día y RecalcularDiaAsync no borra el rollup.)
+        if (reg.Detalles.Count == 0)
+            db.Remove(reg);
+
         await db.SaveChangesAsync(ct);
         await resumen.RecalcularDiaAsync(usuarioId, reg.FechaLocal, ct);
         return reg;
