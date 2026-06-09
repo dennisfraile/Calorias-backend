@@ -23,6 +23,7 @@ public class ServicioNutricionUsda(HttpClient http) : IServicioNutricion
     {
         var resultados = new List<AlimentoNutricional>();
         var crudos = new List<string>();
+        var fdcIdsVistos = new HashSet<int>();
 
         foreach (var alimento in alimentos)
         {
@@ -50,7 +51,7 @@ public class ServicioNutricionUsda(HttpClient http) : IServicioNutricion
             }
 
             var mejor = SelectorMatchUsda.ElegirMejor(candidatos, alimento);
-            if (mejor is null) continue;
+            if (mejor is null || !fdcIdsVistos.Add(mejor.FdcId)) continue;
 
             // Localizar el JsonElement del match elegido para leer sus macros (por 100 g).
             JsonElement food = default;
