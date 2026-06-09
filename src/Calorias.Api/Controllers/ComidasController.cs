@@ -20,6 +20,7 @@ public class ComidasController(
     IServicioResumenDiario resumen,
     IServicioResumenPeriodos resumenPeriodos,
     IServicioCorreccionPorciones correccion,
+    IServicioEtiquetaNutricional etiquetas,
     CaloriasDbContext db) : ControllerBase
 {
     [HttpPost("analizar")]
@@ -146,6 +147,54 @@ public class ComidasController(
         await using var tx = await db.Database.BeginTransactionAsync(ct);
         var registro = await correccion.CorregirAsync(usuarioId, id, correcciones, ct);
         if (registro is null) { await tx.RollbackAsync(ct); return NotFound(); }
+        await tx.CommitAsync(ct);
+
+        return Ok(ADto(registro));
+    }
+
+    /// <summary>
+    /// Lee una etiqueta nutricional (Gemini) y devuelve sus datos por porción. NO guarda.
+    /// </summary>
+    [HttpPost("leer-etiqueta")]
+    [RequestSizeLimit(10_000_000)]
+    public async Task<ActionResult<EtiquetaNutricionalDto>> LeerEtiqueta(
+        [FromForm] IFormFile foto, CancellationToken ct)
+    {
+        if (foto is null || foto.Length == 0) return BadRequest("Imagen requerida.");
+
+        await using var stream = foto.OpenReadStream();
+        var etq = await etiquetas.LeerEtiquetaAsync(stream, foto.ContentType ?? "image/jpeg", ct);
+        if (etq is null)
+            return BadRequest("No se pudo leer la etiqueta; enfoca el panel nutricional.");
+
+        return Ok(new EtiquetaNutricionalDto(
+            etq.NombreProducto, etq.TamPorcion, etq.UnidadPorcion, etq.PorcionesPorEnvase,
+            etq.CaloriasPorPorcion, etq.ProteinaPorPorcion, etq.CarbosPorPorcion, etq.GrasasPorPorcion));
+    }
+
+    /// <summary>
+    /// Guarda una comida a partir de los datos leídos de una etiqueta + porciones consumidas.
+    /// </summary>
+    [HttpPost("guardar-etiqueta")]
+    public async Task<ActionResult<AnalisisComidaDto>> GuardarEtiqueta(
+        [FromBody] GuardarEtiquetaDto cuerpo, CancellationToken ct)
+    {
+        if (cuerpo is null) return BadRequest("Cuerpo requerido.");
+        if (!Enum.TryParse<TipoComida>(cuerpo.Tipo, ignoreCase: true, out var tipo) || !Enum.IsDefined(tipo))
+            return BadRequest("Tipo de comida no válido.");
+        if (cuerpo.Porciones <= 0m) return BadRequest("Porciones debe ser > 0.");
+
+        var usuario = await usuarios.AsegurarUsuarioAsync(User, ct);
+
+        var etq = new EtiquetaNutricional(
+            cuerpo.NombreProducto, cuerpo.TamPorcion, cuerpo.UnidadPorcion, null,
+            cuerpo.CaloriasPorPorcion, cuerpo.ProteinaPorPorcion, cuerpo.CarbosPorPorcion, cuerpo.GrasasPorPorcion);
+        var registro = RegistroDesdeEtiqueta.Construir(etq, cuerpo.Porciones, usuario.Id, tipo, cuerpo.FechaLocal);
+
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        db.Registros.Add(registro);
+        await db.SaveChangesAsync(ct);
+        await resumen.RecalcularDiaAsync(usuario.Id, cuerpo.FechaLocal, ct);
         await tx.CommitAsync(ct);
 
         return Ok(ADto(registro));
