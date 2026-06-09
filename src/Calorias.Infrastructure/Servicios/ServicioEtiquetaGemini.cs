@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 using Calorias.Application.Abstractions;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Calorias.Infrastructure.Servicios;
 
@@ -11,7 +12,9 @@ namespace Calorias.Infrastructure.Servicios;
 /// valores POR PORCIÓN ya en kcal. Best-effort: ante cualquier fallo devuelve null.
 /// API key en config 'Gemini:ApiKey'. Modelo: gemini-2.0-flash.
 /// </summary>
-public class ServicioEtiquetaGemini(HttpClient http, IConfiguration config) : IServicioEtiquetaNutricional
+public class ServicioEtiquetaGemini(
+    HttpClient http, IConfiguration config, ILogger<ServicioEtiquetaGemini> logger)
+    : IServicioEtiquetaNutricional
 {
     private const string Modelo = "gemini-2.0-flash";
 
@@ -32,7 +35,11 @@ public class ServicioEtiquetaGemini(HttpClient http, IConfiguration config) : IS
             var base64 = Convert.ToBase64String(ms.ToArray());
 
             var apiKey = config["Gemini:ApiKey"];
-            if (string.IsNullOrWhiteSpace(apiKey)) return null;
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                logger.LogWarning("Gemini: falta la API key (config 'Gemini:ApiKey').");
+                return null;
+            }
 
             var cuerpo = new
             {
@@ -78,14 +85,24 @@ public class ServicioEtiquetaGemini(HttpClient http, IConfiguration config) : IS
             var url = $"models/{Modelo}:generateContent?key={Uri.EscapeDataString(apiKey)}";
 
             using var resp = await http.PostAsync(url, content, ct);
-            if (!resp.IsSuccessStatusCode) return null;
+            if (!resp.IsSuccessStatusCode)
+            {
+                var errBody = await resp.Content.ReadAsStringAsync(ct);
+                logger.LogWarning("Gemini respondió {Status}: {Body}",
+                    (int)resp.StatusCode, errBody.Length > 500 ? errBody[..500] : errBody);
+                return null;
+            }
 
             var respJson = await resp.Content.ReadAsStringAsync(ct);
             using var doc = JsonDocument.Parse(respJson);
 
             // candidates[0].content.parts[0].text contiene el JSON pedido (responseMimeType=application/json).
             if (!doc.RootElement.TryGetProperty("candidates", out var cands) || cands.GetArrayLength() == 0)
+            {
+                logger.LogWarning("Gemini: respuesta sin 'candidates'. Body: {Body}",
+                    respJson.Length > 500 ? respJson[..500] : respJson);
                 return null;
+            }
             var texto = cands[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
             if (string.IsNullOrWhiteSpace(texto)) return null;
 
@@ -103,7 +120,11 @@ public class ServicioEtiquetaGemini(HttpClient http, IConfiguration config) : IS
                     ? el.GetString() : null;
 
             var calorias = Num("caloriasPorPorcion");
-            if (calorias <= 0m) return null; // no es etiqueta legible
+            if (calorias <= 0m)
+            {
+                logger.LogInformation("Gemini: imagen sin etiqueta legible (caloriasPorPorcion<=0).");
+                return null; // no es etiqueta legible
+            }
 
             return new EtiquetaNutricional(
                 NombreProducto: Str("nombreProducto"),
@@ -115,8 +136,9 @@ public class ServicioEtiquetaGemini(HttpClient http, IConfiguration config) : IS
                 CarbosPorPorcion: Num("carbosPorPorcion"),
                 GrasasPorPorcion: Num("grasasPorPorcion"));
         }
-        catch
+        catch (Exception ex)
         {
+            logger.LogWarning(ex, "Gemini: error leyendo la etiqueta.");
             return null;
         }
     }
