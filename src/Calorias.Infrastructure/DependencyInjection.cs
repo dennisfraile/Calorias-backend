@@ -36,6 +36,13 @@ public static class DependencyInjection
             c.DefaultRequestHeaders.Add("X-Api-Key", config["Usda:ApiKey"] ?? "DEMO_KEY");
         });
 
+        // Gemini (Google AI Studio, free tier) para leer etiquetas nutricionales.
+        services.AddHttpClient<IServicioEtiquetaNutricional, ServicioEtiquetaGemini>(c =>
+        {
+            c.BaseAddress = new Uri("https://generativelanguage.googleapis.com/v1beta/");
+            c.Timeout = TimeSpan.FromSeconds(30);
+        });
+
         services.AddScoped<IServicioUsuarios, ServicioUsuarios>();
         services.AddScoped<IServicioResumenDiario, ServicioResumenDiario>();
         services.AddScoped<IServicioResumenPeriodos, ServicioResumenPeriodos>();
