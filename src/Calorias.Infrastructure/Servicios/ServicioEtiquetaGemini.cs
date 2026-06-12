@@ -20,11 +20,13 @@ public class ServicioEtiquetaGemini(
     private const string Modelo = "gemini-2.5-flash-lite";
 
     private const string Prompt =
-        "Eres un extractor de etiquetas nutricionales. Lee la tabla nutricional de la imagen y " +
-        "devuelve SOLO los datos POR PORCIÓN. Convierte la energía a kcal (si está en kJ, divídela " +
-        "entre 4.184). 'tamPorcion' es el tamaño de una porción y 'unidadPorcion' su unidad ('g' o 'mL'). " +
-        "Incluye 'porcionesPorEnvase' si aparece. Si la imagen NO es una etiqueta nutricional legible, " +
-        "pon 0 en caloriasPorPorcion. Responde en el idioma del producto para 'nombreProducto'.";
+        "Eres un extractor de etiquetas nutricionales. Lee la tabla nutricional de la imagen, " +
+        "en CUALQUIER idioma. Devuelve los macros en la base que use la etiqueta: si la tabla los da " +
+        "POR PORCIÓN usa base='porcion'; si los da POR 100 g/100 mL usa base='cien'. " +
+        "'tamPorcion' es el tamaño de una porción y 'unidadPorcion' su unidad ('g' o 'mL'); cuando uses " +
+        "base='cien', asegúrate de incluir 'tamPorcion' en g o mL. Convierte la energía a kcal (si está en " +
+        "kJ, divídela entre 4.184). Incluye 'porcionesPorEnvase' si aparece. Si la imagen NO es una etiqueta " +
+        "nutricional legible, pon 0 en caloriasPorBase. Responde en el idioma del producto para 'nombreProducto'.";
 
     public async Task<EtiquetaNutricional?> LeerEtiquetaAsync(
         Stream imagen, string mimeType, CancellationToken ct = default)
@@ -67,15 +69,16 @@ public class ServicioEtiquetaGemini(
                             tamPorcion = new { type = "NUMBER" },
                             unidadPorcion = new { type = "STRING" },
                             porcionesPorEnvase = new { type = "NUMBER", nullable = true },
-                            caloriasPorPorcion = new { type = "NUMBER" },
-                            proteinaPorPorcion = new { type = "NUMBER" },
-                            carbosPorPorcion = new { type = "NUMBER" },
-                            grasasPorPorcion = new { type = "NUMBER" },
+                            @base = new { type = "STRING", @enum = new[] { "porcion", "cien" } },
+                            caloriasPorBase = new { type = "NUMBER" },
+                            proteinaPorBase = new { type = "NUMBER" },
+                            carbosPorBase = new { type = "NUMBER" },
+                            grasasPorBase = new { type = "NUMBER" },
                         },
                         required = new[]
                         {
-                            "tamPorcion", "unidadPorcion", "caloriasPorPorcion",
-                            "proteinaPorPorcion", "carbosPorPorcion", "grasasPorPorcion",
+                            "tamPorcion", "unidadPorcion", "base", "caloriasPorBase",
+                            "proteinaPorBase", "carbosPorBase", "grasasPorBase",
                         },
                     },
                 },
@@ -120,22 +123,26 @@ public class ServicioEtiquetaGemini(
                 r.TryGetProperty(prop, out var el) && el.ValueKind == JsonValueKind.String
                     ? el.GetString() : null;
 
-            var calorias = Num("caloriasPorPorcion");
+            var calorias = Num("caloriasPorBase");
             if (calorias <= 0m)
             {
-                logger.LogInformation("Gemini: imagen sin etiqueta legible (caloriasPorPorcion<=0).");
+                logger.LogInformation("Gemini: imagen sin etiqueta legible (caloriasPorBase<=0).");
                 return null; // no es etiqueta legible
             }
+
+            var baseLeida = string.Equals(Str("base")?.Trim(), "cien", StringComparison.OrdinalIgnoreCase)
+                ? BaseMedida.Cien : BaseMedida.Porcion;
 
             return new EtiquetaNutricional(
                 NombreProducto: Str("nombreProducto"),
                 TamPorcion: Num("tamPorcion") > 0m ? Num("tamPorcion") : 100m,
                 UnidadPorcion: Str("unidadPorcion") ?? "g",
                 PorcionesPorEnvase: NumNull("porcionesPorEnvase"),
-                CaloriasPorPorcion: calorias,
-                ProteinaPorPorcion: Num("proteinaPorPorcion"),
-                CarbosPorPorcion: Num("carbosPorPorcion"),
-                GrasasPorPorcion: Num("grasasPorPorcion"));
+                Base: baseLeida,
+                CaloriasPorBase: calorias,
+                ProteinaPorBase: Num("proteinaPorBase"),
+                CarbosPorBase: Num("carbosPorBase"),
+                GrasasPorBase: Num("grasasPorBase"));
         }
         catch (Exception ex)
         {

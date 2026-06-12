@@ -7,10 +7,12 @@ namespace Calorias.Tests;
 
 public class RegistroDesdeEtiquetaTests
 {
+    // Etiqueta POR PORCIÓN (base = Porcion): valores tal cual.
     private static EtiquetaNutricional Refresco() => new(
         NombreProducto: "Kolashanpan",
         TamPorcion: 250m, UnidadPorcion: "mL", PorcionesPorEnvase: 1.4m,
-        CaloriasPorPorcion: 84m, ProteinaPorPorcion: 0m, CarbosPorPorcion: 21m, GrasasPorPorcion: 0m);
+        Base: BaseMedida.Porcion,
+        CaloriasPorBase: 84m, ProteinaPorBase: 0m, CarbosPorBase: 21m, GrasasPorBase: 0m);
 
     [Fact]
     public void Escala_macros_y_cantidad_por_porciones()
@@ -48,5 +50,41 @@ public class RegistroDesdeEtiquetaTests
         var etq = Refresco() with { NombreProducto = null };
         var reg = RegistroDesdeEtiqueta.Construir(etq, 1m, "u1", TipoComida.Cena, new System.DateOnly(2026, 6, 9));
         Assert.Equal("Producto", reg.Detalles.First().NombreAlimento);
+    }
+
+    [Fact]
+    public void Base_cien_con_unidad_masa_convierte_a_porcion()
+    {
+        // Galleta: 500 kcal por 100 g, porción de 30 g => 150 kcal por porción.
+        var etq = new EtiquetaNutricional(
+            NombreProducto: "Galletas", TamPorcion: 30m, UnidadPorcion: "g", PorcionesPorEnvase: 8m,
+            Base: BaseMedida.Cien,
+            CaloriasPorBase: 500m, ProteinaPorBase: 10m, CarbosPorBase: 60m, GrasasPorBase: 25m);
+
+        var reg = RegistroDesdeEtiqueta.Construir(etq, porciones: 2m, usuarioId: "u1",
+            tipo: TipoComida.Snack, fechaLocal: new System.DateOnly(2026, 6, 12));
+
+        var d = Assert.Single(reg.Detalles);
+        Assert.Equal(60m, d.Cantidad);             // 30 g * 2 porciones
+        Assert.Equal(300m, d.Calorias);            // (500 * 30/100) * 2 = 150 * 2
+        Assert.Equal(6m, d.Proteinas);             // (10 * 0.3) * 2
+        Assert.Equal(36m, d.Carbohidratos);        // (60 * 0.3) * 2
+        Assert.Equal(15m, d.Grasas);               // (25 * 0.3) * 2
+    }
+
+    [Fact]
+    public void Base_cien_con_unidad_no_masa_se_trata_como_porcion()
+    {
+        // Unidad "unidad" no permite la conversión por 100 => factor 1.
+        var etq = new EtiquetaNutricional(
+            NombreProducto: "Barra", TamPorcion: 1m, UnidadPorcion: "unidad", PorcionesPorEnvase: 6m,
+            Base: BaseMedida.Cien,
+            CaloriasPorBase: 90m, ProteinaPorBase: 2m, CarbosPorBase: 12m, GrasasPorBase: 3m);
+
+        var reg = RegistroDesdeEtiqueta.Construir(etq, 1m, "u1", TipoComida.Snack, new System.DateOnly(2026, 6, 12));
+
+        var d = Assert.Single(reg.Detalles);
+        Assert.Equal(90m, d.Calorias);             // factor 1 (no es masa)
+        Assert.Equal(2m, d.Proteinas);
     }
 }

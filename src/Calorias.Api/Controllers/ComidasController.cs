@@ -169,7 +169,8 @@ public class ComidasController(
 
         return Ok(new EtiquetaNutricionalDto(
             etq.NombreProducto, etq.TamPorcion, etq.UnidadPorcion, etq.PorcionesPorEnvase,
-            etq.CaloriasPorPorcion, etq.ProteinaPorPorcion, etq.CarbosPorPorcion, etq.GrasasPorPorcion));
+            etq.Base == BaseMedida.Cien ? "cien" : "porcion",
+            etq.CaloriasPorBase, etq.ProteinaPorBase, etq.CarbosPorBase, etq.GrasasPorBase));
     }
 
     /// <summary>
@@ -186,9 +187,12 @@ public class ComidasController(
 
         var usuario = await usuarios.AsegurarUsuarioAsync(User, ct);
 
+        var baseMedida = string.Equals(cuerpo.Base?.Trim(), "cien", StringComparison.OrdinalIgnoreCase)
+            ? BaseMedida.Cien : BaseMedida.Porcion;
         var etq = new EtiquetaNutricional(
             cuerpo.NombreProducto, cuerpo.TamPorcion, cuerpo.UnidadPorcion, null,
-            cuerpo.CaloriasPorPorcion, cuerpo.ProteinaPorPorcion, cuerpo.CarbosPorPorcion, cuerpo.GrasasPorPorcion);
+            baseMedida,
+            cuerpo.CaloriasPorBase, cuerpo.ProteinaPorBase, cuerpo.CarbosPorBase, cuerpo.GrasasPorBase);
         var registro = RegistroDesdeEtiqueta.Construir(etq, cuerpo.Porciones, usuario.Id, tipo, cuerpo.FechaLocal);
 
         await using var tx = await db.Database.BeginTransactionAsync(ct);
