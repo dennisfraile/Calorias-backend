@@ -1,25 +1,28 @@
 namespace Calorias.Api.Dtos;
 
-/// <summary>Respuesta de POST /api/comidas/leer-etiqueta (previsualización, no guarda).</summary>
+/// <summary>Respuesta de POST /api/comidas/leer-etiqueta (previsualización, no guarda).
+/// Macros POR BASE; 'Base' = "porcion" | "cien".</summary>
 public record EtiquetaNutricionalDto(
     string? NombreProducto,
     decimal TamPorcion,
     string UnidadPorcion,
     decimal? PorcionesPorEnvase,
-    decimal CaloriasPorPorcion,
-    decimal ProteinaPorPorcion,
-    decimal CarbosPorPorcion,
-    decimal GrasasPorPorcion);
+    string Base,
+    decimal CaloriasPorBase,
+    decimal ProteinaPorBase,
+    decimal CarbosPorBase,
+    decimal GrasasPorBase);
 
-/// <summary>Cuerpo de POST /api/comidas/guardar-etiqueta.</summary>
+/// <summary>Cuerpo de POST /api/comidas/guardar-etiqueta. Macros POR BASE.</summary>
 public record GuardarEtiquetaDto(
     string? NombreProducto,
     decimal TamPorcion,
     string UnidadPorcion,
-    decimal CaloriasPorPorcion,
-    decimal ProteinaPorPorcion,
-    decimal CarbosPorPorcion,
-    decimal GrasasPorPorcion,
+    string Base,
+    decimal CaloriasPorBase,
+    decimal ProteinaPorBase,
+    decimal CarbosPorBase,
+    decimal GrasasPorBase,
     decimal Porciones,
     string Tipo,
     DateOnly FechaLocal);
