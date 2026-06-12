@@ -1,3 +1,8 @@
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace Calorias.Application.Abstractions;
 
 /// <summary>Base en la que vienen expresados los macros de una etiqueta.</summary>
@@ -19,10 +24,11 @@ public record EtiquetaNutricional(
     decimal GrasasPorBase)
 {
     private bool UnidadEsMasa =>
-        string.Equals(UnidadPorcion?.Trim(), "g", System.StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(UnidadPorcion?.Trim(), "ml", System.StringComparison.OrdinalIgnoreCase);
+        string.Equals(UnidadPorcion?.Trim(), "g", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(UnidadPorcion?.Trim(), "ml", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Factor para pasar de "por base" a "por porción".</summary>
+    // Unidades distintas de g/mL caen intencionalmente al factor 1 (se tratan como ya expresadas por porción).
     private decimal FactorPorPorcion =>
         Base == BaseMedida.Cien && UnidadEsMasa && TamPorcion > 0m ? TamPorcion / 100m : 1m;
 
@@ -35,6 +41,6 @@ public record EtiquetaNutricional(
 public interface IServicioEtiquetaNutricional
 {
     /// <summary>Lee la etiqueta de una imagen. Devuelve null si no logra leer una etiqueta legible.</summary>
-    System.Threading.Tasks.Task<EtiquetaNutricional?> LeerEtiquetaAsync(
-        System.IO.Stream imagen, string mimeType, System.Threading.CancellationToken ct = default);
+    Task<EtiquetaNutricional?> LeerEtiquetaAsync(
+        Stream imagen, string mimeType, CancellationToken ct = default);
 }
